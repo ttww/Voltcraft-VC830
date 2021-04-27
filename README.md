@@ -1,6 +1,8 @@
 # Voltcraft-VC830
 
-<img src="doc/voltcraft-vc830.png" alt="VC830" style="width:200px ;float:right;"/>vc840 is a little C program which reads serial data from a voltcraft VC830 digital multimeter and transform it to different output signals.
+vc840 is a little C program which reads serial data from a voltcraft VC830 digital multimeter and transform it to different output signals.
+
+<img src="doc/voltcraft-vc830.png" alt="VC830" width="200px"/>
 
 The VC830 is based on the FS9922-DMM4 IC from Fortune Semiconductor Corporation, see the [FS9922-DMM4-DS-15_EN.pdf](http://www.ic-fortune.com/upload/Download/FS9922-DMM4-DS-13_EN.pdf) manual.
 
@@ -33,7 +35,7 @@ Usage: vc830 [-f output-format] [-t time-format] [-c count] <tty device>.
 
 ### Running
 
-<img src="doc/voltcraft-vc830-REL-PC-Key.png" alt="REL/PC" style="width:80px ;float:right;">
+<img src="doc/voltcraft-vc830-REL-PC-Key.png" alt="REL/PC" style="width:80px ;float:right;"/>
 You need to start the data transmission on the VC830 by pressing the REL/PC key for about 2 seconds.
 
 If you have a connected VC830 (as device <code>/dev/ttyUSB0</code> in my case) you can use the following command:
@@ -129,7 +131,7 @@ Pre-Captured data with different measurements.
 -  macOS
 -  Debian on Rasberry Pi
 
-<img src="doc/voltcraft-rs232.png" alt="REL/PC" style="width:80px ;float:right;">
+<img src="doc/voltcraft-rs232.png" alt="REL/PC" width="80px"/>
 I used a [RS232 adapter](https://www.conrad.de/de/p/voltcraft-rs-232-rs-232-rs-232-schnittstellenadapter-fuer-voltcraft-multimeter-1-st-125640.html) and a [7404 chip](https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/7404_Hex_Inverters.PNG/533px-7404_Hex_Inverters.PNG?uselang=de) to invert the signal level, because I had no "real" RS232 interface available.
 
 ### Formatter
