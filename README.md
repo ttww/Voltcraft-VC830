@@ -1,6 +1,6 @@
 # Voltcraft-VC830
 
-vc830 is a little C program which reads serial data from a voltcraft VC830 digital multimeter and transform it to different output signals.
+vc830 is a little C program which reads serial data from a voltcraft VC830 digital multimeter and transform it to different output formats.
 
 <img src="doc/voltcraft-vc830.png" alt="VC830" width="200px"/>
 
