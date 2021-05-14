@@ -1,0 +1,35 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"ioctl.h": "c",
+			"stdlib.h": "c",
+			"__bit_reference": "c",
+			"__functional_base": "c",
+			"__node_handle": "c",
+			"algorithm": "c",
+			"atomic": "c",
+			"bitset": "c",
+			"chrono": "c",
+			"cstddef": "c",
+			"__memory": "c",
+			"functional": "c",
+			"iterator": "c",
+			"limits": "c",
+			"locale": "c",
+			"memory": "c",
+			"optional": "c",
+			"ratio": "c",
+			"system_error": "c",
+			"tuple": "c",
+			"type_traits": "c",
+			"vector": "c"
+		},
+		"clang-format.assumeFilename": "${workspaceRoot}/.clang-format",
+		"C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 0, AlignConsecutiveAssignments: true, AlignConsecutiveMacros: true, AlignConsecutiveDeclarations: true, AlignOperands: true, AllowShortBlocksOnASingleLine: true, AllowShortIfStatementsOnASingleLine: true, AllowShortLoopsOnASingleLine: true, KeepEmptyLinesAtTheStartOfBlocks: true, BreakBeforeBraces: Linux }"
+	}
+}

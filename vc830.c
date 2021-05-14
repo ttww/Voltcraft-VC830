@@ -5,9 +5,9 @@
  *
  * This file implemnts a Voltcraft VC-830 serial protocol decoder.
  * Based on datasheet FS9922-DMM4-DS-15_EN.pdf.
- * 
+ *
  * CLANG Formater style:
- * { BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 0, AlignConsecutiveAssignments: true, AlignConsecutiveMacros: true, AlignConsecutiveDeclarations: true, AlignOperands: true, AllowShortBlocksOnASingleLine: true, AllowShortIfStatementsOnASingleLine: true, AllowShortLoopsOnASingleLine: true, KeepEmptyLinesAtTheStartOfBlocks: true, BreakBeforeBraces: Linux }
+ * { BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 0, AlignConsecutiveAssignments: true, AlignConsecutiveMacros: true, AlignConsecutiveDeclarations: true, AlignOperands: true, AllowShortBlocksOnASingleLine: true, AllowShortIfStatementsOnASingleLine: true, AllowShortLoopsOnASingleLine: true, KeepEmptyLinesAtTheStartOfBlocks: true, BreakBeforeBraces: Stroustrup }
  */
 
 #include <ctype.h>
@@ -50,13 +50,14 @@ struct Vc830 {
     bool           holdActive;                   // Measurement on holdwith hold key
     bool           deltaActive;                  // Measurement switch to REL/DELTA mode. no absolute value!
     bool           overflow;                     // Overflow, mostly if autorange is switched off
+    char           value[BUFFER_LEN];            // Formated value
     char           formatedValue[BUFFER_LEN];    // Formated value with measurement unit
     char           formatedSiValue[BUFFER_LEN];  // Formated value, normed to SI base unit
 };
 
 // --------------------------------------------------------------------------------------------------------------
 
-void exitWithError(const char* message)
+void exitWithError(const char *message)
 {
     fprintf(stderr, "Error: Program exit with: %s", message);
     exit(-1);
@@ -64,10 +65,9 @@ void exitWithError(const char* message)
 
 // --------------------------------------------------------------------------------------------------------------
 
-void showUsageAndExit(const char* message)
+void showUsageAndExit(const char *message)
 {
-    if (message && *message)
-        fprintf(stderr, "Error: %s\n", message);
+    if (message && *message) fprintf(stderr, "Error: %s\n", message);
 
     fprintf(stderr, "vc830: Reads serial data from a RS232 device for Voltcraft VC830 DMM. (c) 2021 version %s, Thomas Welsch (ttww@gmx.de)\n", VERSION);
 
@@ -91,9 +91,10 @@ void setRtsDtr(int fd)
 
 // --------------------------------------------------------------------------------------------------------------
 
-int openDevice(const char* deviceName)
+int openDevice(const char *deviceName)
 {
-    speed_t bdflag = B2400;  // All VC-830 with FS9922-DMM4 chips are using 2400 Baud, 8N1
+    speed_t bdflag =
+        B2400;  // All VC-830 with FS9922-DMM4 chips are using 2400 Baud, 8N1
 
     static struct termios tty;
     int                   modelines = 0;
@@ -104,6 +105,7 @@ int openDevice(const char* deviceName)
         perror("open failed");
         exit(-1);
     }
+
     if (isatty(fd)) {
         tcgetattr(fd, &tty);
         tty.c_iflag     = IGNBRK | IGNPAR;
@@ -124,16 +126,17 @@ int openDevice(const char* deviceName)
             return (-1);
         }
 
-        if (ioctl(fd, TIOCEXCL, &modelines) == -1)  // Put the tty into exclusive mode.
-        {
+        if (ioctl(fd, TIOCEXCL, &modelines) == -1) {  // Put the tty into exclusive mode.
             perror("ioctl TIOCEXCL failed");
             return (-1);
         }
 
         setRtsDtr(fd);           // DTR/RTS, important for voltage supply to RS232 optical converter
         tcflush(fd, TCIOFLUSH);  // flush buffers
-    } else {
-        //fprintf(stderr, "The Device %s is not a terminal device, reading captured data !\n", deviceName);
+    }
+    else {
+        // fprintf(stderr, "The Device %s is not a terminal device, reading captured
+        // data !\n", deviceName);
     }
 
     return (fd);
@@ -141,7 +144,7 @@ int openDevice(const char* deviceName)
 
 // --------------------------------------------------------------------------------------------------------------
 
-char* to_binary(unsigned char x)
+char *to_binary(unsigned char x)
 {
     static char b[9];
     b[8] = '\0';
@@ -174,9 +177,9 @@ void showBuffer(byte buf[])
 
 // --------------------------------------------------------------------------------------------------------------
 
-void strinsert(char* srcAndDest, int pos, const char* toInsert)
+void strinsert(char *srcAndDest, int pos, const char *toInsert)
 {
-    char* buf = malloc(strlen(srcAndDest) + strlen(toInsert) + 1);
+    char *buf = malloc(strlen(srcAndDest) + strlen(toInsert) + 1);
 
     strncpy(buf, srcAndDest, pos);
     buf[pos] = '\0';
@@ -188,7 +191,7 @@ void strinsert(char* srcAndDest, int pos, const char* toInsert)
 
 // --------------------------------------------------------------------------------------------------------------
 
-bool checkInfo(byte buf[], int statusByte, int statusBit, const char* info, char* out)
+bool checkInfo(byte buf[], int statusByte, int statusBit, const char *info, char *out)
 {
     if (buf[7 + statusByte - 1] & (1 << statusBit)) {
         if (out) {
@@ -202,9 +205,9 @@ bool checkInfo(byte buf[], int statusByte, int statusBit, const char* info, char
 
 // --------------------------------------------------------------------------------------------------------------
 
-void trimZeros(char* s)
+void trimZeros(char *s)
 {
-    char* e = strchr(s, '\0');
+    char *e = strchr(s, '\0');
     while (e > s) {
         e--;
         if (*e != '0') return;
@@ -215,9 +218,9 @@ void trimZeros(char* s)
 
 // --------------------------------------------------------------------------------------------------------------
 
-int decodeFS9922Paket(byte buf[], struct Vc830* vc830Data)
+int decodeFS9922Paket(byte buf[], struct Vc830 *vc830Data)
 {
-    //showBuffer(buf);
+    // showBuffer(buf);
 
     memset(vc830Data, 0, sizeof(*vc830Data));
 
@@ -241,7 +244,8 @@ int decodeFS9922Paket(byte buf[], struct Vc830* vc830Data)
     if (buf[1] == 0x3f && buf[2] == 0x30 && buf[3] == 0x3a && buf[4] == 0x3f) {
         vc830Data->overflow = true;
         strcpy(value, "OVF");
-    } else {
+    }
+    else {
         // Read value
         for (int i = 0; i < 4; i++) {
             if (!isdigit(buf[1 + i])) return -3;
@@ -313,7 +317,7 @@ int decodeFS9922Paket(byte buf[], struct Vc830* vc830Data)
     if (strequal(prefix, "µ")) multToSi = 0.000001;
     if (strequal(prefix, "m")) multToSi = 0.001;
     if (strequal(prefix, "k")) multToSi = 1000;
-    if (strequal(prefix, "k")) multToSi = 1000000;
+    if (strequal(prefix, "M")) multToSi = 1000000;
 
     // Bar % (0-60)
     byte bar = buf[11] & 0x7f;  // Hi-Bit is sign
@@ -329,8 +333,13 @@ int decodeFS9922Paket(byte buf[], struct Vc830* vc830Data)
     vWithUnit[0] = '\0';
     if (sign == -1) strcat(vWithUnit, "-");
 
-    char* vz = value;
+    // Strip '0' at the start:
+    char *vz = value;
     while (*vz == '0' && *(vz + 1) != '.') vz++;
+
+    // Strip "." at the end:
+    char *se = strrchr(vz, '.');
+    if (se && strequal(se, ".0")) *se = '\0';
 
     strcat(vWithUnit, vz);
     strcat(vWithUnit, " ");
@@ -342,9 +351,9 @@ int decodeFS9922Paket(byte buf[], struct Vc830* vc830Data)
     strcat(vSiWithUnit, " ");
     strcat(vSiWithUnit, unit);
 
-    if (false) printf(
-        "abs value = |%s| --> sign %d k %d  mode |%s| prefix |%s| unit |%s| info |%s| bar = %d | v = %s  vSi = %f (%s)\n",
-        value, sign, k, mode, prefix, unit, info, bar, vWithUnit, vSi, vSiWithUnit);
+    if (false)
+        printf("abs value = |%s| --> sign %d k %d  mode |%s| prefix |%s| unit |%s| info |%s| bar = %d | v = %s  vSi = %f (%s)\n",
+               value, sign, k, mode, prefix, unit, info, bar, vWithUnit, vSi, vSiWithUnit);
 
     // Copy to output structure
     vc830Data->sign     = sign == 1 ? '+' : '-';
@@ -357,6 +366,7 @@ int decodeFS9922Paket(byte buf[], struct Vc830* vc830Data)
     strcpy(vc830Data->prefix, prefix);
     strcpy(vc830Data->fullUnit, prefix);
     strcat(vc830Data->fullUnit, unit);
+    strcpy(vc830Data->value, vz);
     strcpy(vc830Data->formatedValue, vWithUnit);
     strcpy(vc830Data->formatedSiValue, vSiWithUnit);
 
@@ -384,8 +394,7 @@ int read14BytesPaket(int fd, byte readBuffer[])
             return -1;
         }
 
-        if (ret == 0)  // timeout, reset buffer
-        {
+        if (ret == 0) {  // timeout, reset buffer
             bufIdx = 0;
             continue;
         }
@@ -405,10 +414,10 @@ int read14BytesPaket(int fd, byte readBuffer[])
 
 // --------------------------------------------------------------------------------------------------------------
 
-char* getLocalTime(struct timeval t)
+char *getLocalTime(struct timeval t)
 {
     static char ret[64];
-    struct tm*  nowtm;
+    struct tm * nowtm;
     char        tmbuf[32];
 
     nowtm = localtime(&t.tv_sec);
@@ -421,10 +430,10 @@ char* getLocalTime(struct timeval t)
 
 // --------------------------------------------------------------------------------------------------------------
 
-char* getLocalDateTime(struct timeval t)
+char *getLocalDateTime(struct timeval t)
 {
     static char ret[64];
-    struct tm*  nowtm;
+    struct tm * nowtm;
 
     nowtm = localtime(&t.tv_sec);
 
@@ -435,10 +444,10 @@ char* getLocalDateTime(struct timeval t)
 
 // --------------------------------------------------------------------------------------------------------------
 
-char* getIso8601Time(struct timeval t)
+char *getIso8601Time(struct timeval t)
 {
     static char ret[200];
-    struct tm*  nowtm;
+    struct tm * nowtm;
     char        tmbuf[64];
     char        tzbuf[64];
 
@@ -452,7 +461,7 @@ char* getIso8601Time(struct timeval t)
 
 // --------------------------------------------------------------------------------------------------------------
 
-char* getEpochSecMsTime(struct timeval t)
+char *getEpochSecMsTime(struct timeval t)
 {
     static char ret[64];
     snprintf(ret, sizeof(ret), "%ld.%ld", t.tv_sec, (long)t.tv_usec);
@@ -461,61 +470,25 @@ char* getEpochSecMsTime(struct timeval t)
 
 // --------------------------------------------------------------------------------------------------------------
 
-void outputJsonString(const char* key, const char* value)
-{
-    fprintf(stdout, "\t\"%s\": \"%s\"", key, value);
-}
-void outputJsonChar(const char* key, char value)
-{
-    fprintf(stdout, "\t\"%s\": \"%c\"", key, value);
-}
-void outputJsonInt(const char* key, int value)
-{
-    fprintf(stdout, "\t\"%s\": %d", key, value);
-}
-void outputJsonBool(const char* key, bool value)
-{
-    fprintf(stdout, "\t\"%s\": %s", key, value ? "true" : "false");
-}
-void outputJsonTimestamp(const char* key, struct timeval value)
-{
-    fprintf(stdout, "\t\"%s\": \"%s\"", key, getIso8601Time(value));
-}
-void outputJsonNLSEP()
-{
-    fprintf(stdout, ",\n");
-}
-void outputJsonNL()
-{
-    fprintf(stdout, "\n");
-}
+void outputJsonString(const char *key, const char *value) { fprintf(stdout, "\t\"%s\": \"%s\"", key, value); }
+void outputJsonChar(const char *key, char value) { fprintf(stdout, "\t\"%s\": \"%c\"", key, value); }
+void outputJsonInt(const char *key, int value) { fprintf(stdout, "\t\"%s\": %d", key, value); }
+void outputJsonBool(const char *key, bool value) { fprintf(stdout, "\t\"%s\": %s", key, value ? "true" : "false"); }
+void outputJsonTimestamp(const char *key, struct timeval value) { fprintf(stdout, "\t\"%s\": \"%s\"", key, getIso8601Time(value)); }
+void outputJsonNLSEP() { fprintf(stdout, ",\n"); }
+void outputJsonNL() { fprintf(stdout, "\n"); }
 
 // --------------------------------------------------------------------------------------------------------------
 
-void outputKvString(const char* key, const char* value)
-{
-    fprintf(stdout, "%s=%s\n", key, value);
-}
-void outputKvChar(const char* key, char value)
-{
-    fprintf(stdout, "%s=%c\n", key, value);
-}
-void outputKvInt(const char* key, int value)
-{
-    fprintf(stdout, "%s=%d\n", key, value);
-}
-void outputKvBool(const char* key, bool value)
-{
-    fprintf(stdout, "%s=%s\n", key, value ? "true" : "false");
-}
-void outputKvTimestamp(const char* key, struct timeval value)
-{
-    fprintf(stdout, "%s=%s\n", key, getIso8601Time(value));
-}
+void outputKvString(const char *key, const char *value) { fprintf(stdout, "%s=%s\n", key, value); }
+void outputKvChar(const char *key, char value) { fprintf(stdout, "%s=%c\n", key, value); }
+void outputKvInt(const char *key, int value) { fprintf(stdout, "%s=%d\n", key, value); }
+void outputKvBool(const char *key, bool value) { fprintf(stdout, "%s=%s\n", key, value ? "true" : "false"); }
+void outputKvTimestamp(const char *key, struct timeval value) { fprintf(stdout, "%s=%s\n", key, getIso8601Time(value)); }
 
 // --------------------------------------------------------------------------------------------------------------
 
-void showDataKeyValue(struct Vc830* vc830Data, const char* timeText)
+void showDataKeyValue(struct Vc830 *vc830Data, const char *timeText)
 {
     outputKvTimestamp("receivedAt", vc830Data->receivedAt);
     if (*timeText) outputKvString("receivedAtFormated", timeText);
@@ -533,13 +506,14 @@ void showDataKeyValue(struct Vc830* vc830Data, const char* timeText)
     outputKvBool("deltaActive", vc830Data->deltaActive);
     outputKvBool("overflow", vc830Data->overflow);
     outputKvString("rawRisplay", vc830Data->rawRisplay);
+    outputKvString("value", vc830Data->value);
     outputKvString("formatedValue", vc830Data->formatedValue);
     outputKvString("formatedSiValue", vc830Data->formatedSiValue);
 }
 
 // --------------------------------------------------------------------------------------------------------------
 
-void showDataJson(struct Vc830* vc830Data, const char* timeText)
+void showDataJson(struct Vc830 *vc830Data, const char *timeText)
 {
     fprintf(stdout, "{\n");
 
@@ -577,6 +551,8 @@ void showDataJson(struct Vc830* vc830Data, const char* timeText)
     outputJsonNLSEP();
     outputJsonString("rawRisplay", vc830Data->rawRisplay);
     outputJsonNLSEP();
+    outputJsonString("value", vc830Data->value);
+    outputJsonNLSEP();
     outputJsonString("formatedValue", vc830Data->formatedValue);
     outputJsonNLSEP();
     outputJsonString("formatedSiValue", vc830Data->formatedSiValue);
@@ -587,23 +563,159 @@ void showDataJson(struct Vc830* vc830Data, const char* timeText)
 
 // --------------------------------------------------------------------------------------------------------------
 
-void showDataHuman(struct Vc830* vc830Data, const char* timeText)
+void showDataHuman(struct Vc830 *vc830Data, const char *timeText)
 {
-    fprintf(stdout, "%s%s%s\t\t%s\t%s\n", timeText, *timeText ? "\t\t" : "", vc830Data->formatedValue, vc830Data->mode, vc830Data->info);
+    fprintf(stdout, "%s%s%s\t\t%s\t%s\n", timeText, *timeText ? "\t\t" : "",
+            vc830Data->formatedValue, vc830Data->mode, vc830Data->info);
 }
 
 // --------------------------------------------------------------------------------------------------------------
 
-void showDataSi(struct Vc830* vc830Data, const char* timeText)
+void showDataSi(struct Vc830 *vc830Data, const char *timeText)
 {
-    fprintf(stdout, "%s%s%s\t\t%s\t%s\n", timeText, *timeText ? "\t\t" : "", vc830Data->formatedSiValue, vc830Data->mode, vc830Data->info);
+    fprintf(stdout, "%s%s%s\t\t%s\t%s\n", timeText, *timeText ? "\t\t" : "",
+            vc830Data->formatedSiValue, vc830Data->mode, vc830Data->info);
 }
 
 // --------------------------------------------------------------------------------------------------------------
 
-void showData(struct Vc830* vc830Data, const char* outputFormat, const char* timeFormat)
+// clang-format off
+const char *textToSpeechData[] = {
+    "Ω",          "Ohm",
+    "V",          "Volt",
+    "A",          "Ampere",
+    "hFE",        "Verstärkungsfaktor",     // differentielle Stromverstärkungsfaktor
+    "Hz",         "Herz",
+    "F",          "Farad",
+    "°F",         "Fahrenheit",
+    "°C",         "Celsius",
+
+    "n",         "nano",
+    "µ",         "micro",
+    "m",         "milli",
+    "k",         "kilo",
+    "M",         "mega",
+    "%",         "Prozent",
+
+    "OVF",        "Überlauf",
+    "AUTO",       "Automatische Bereichswahl",
+    "DC",         "Gleichspannung",
+    "DC REL",     "Gleichspannung, relative Anzeige",
+    "DC HOLD",    "Gleichspannung, Anzeige gestoppt",
+    "AC",         "Wechselspannung",
+    "AC REL",     "Wechselspannung, relative Anzeige",
+    "DC HOLD",    "Wechselspannung, Anzeige gestoppt",
+    "BAT",        "Batterie Warnung",
+
+    NULL,NULL,
+};
+// clang-format on
+
+// --------------------------------------------------------------------------------------------------------------
+
+const char *textToSpeech(const char *in)
 {
-    char* timeText = NULL;
+    if (!*in) return "";
+
+    int i = 0;
+    while (textToSpeechData[i]) {
+        if (strequal(textToSpeechData[i], in)) return textToSpeechData[i + 1];
+        i += 2;
+    }
+    fprintf(stderr, "unknown text |%s|\n", in);
+    return "Unbekannter Text";
+}
+
+// --------------------------------------------------------------------------------------------------------------
+
+struct Vc830 *lastSpeechData = NULL;
+
+void initLastSpeechData()
+{
+    if (lastSpeechData != NULL) return;
+    lastSpeechData = malloc(sizeof(*lastSpeechData));
+    memset(lastSpeechData, 0, sizeof(*lastSpeechData));
+}
+
+// --------------------------------------------------------------------------------------------------------------
+
+bool checkSpeechStr(char *oldTxt, const char *newTxt, const char *flag)
+{
+    //printf("old = |%s|  new = |%s|  flag = |%s|  \n", oldTxt, newTxt, flag);
+
+    if (!strequal(oldTxt, newTxt) && strstr(newTxt, flag)) {
+        fprintf(stdout, "%s\n", textToSpeech(flag));
+        strncpy(oldTxt, newTxt, BUFFER_LEN);
+        return true;
+    }
+    return false;
+}
+
+// --------------------------------------------------------------------------------------------------------------
+
+bool checkSpeechBool(bool oldBool, bool newBool, const char *flag)
+{
+    if (oldBool != newBool && newBool) {
+        fprintf(stdout, "%s\n", textToSpeech(flag));
+    }
+    return newBool;
+}
+
+// --------------------------------------------------------------------------------------------------------------
+
+void showDataSpeech(struct Vc830 *vc830Data, const char *timeText)
+{
+    initLastSpeechData();
+
+    lastSpeechData->overflow = checkSpeechBool(lastSpeechData->overflow, vc830Data->overflow, "OVF");
+    if (lastSpeechData->overflow) return;
+
+    lastSpeechData->batteryWarning = checkSpeechBool(lastSpeechData->batteryWarning, vc830Data->batteryWarning, "BAT");
+
+    checkSpeechStr(lastSpeechData->info, vc830Data->info, "AUTO");
+    checkSpeechStr(lastSpeechData->mode, vc830Data->mode, "DC REL");
+    checkSpeechStr(lastSpeechData->mode, vc830Data->mode, "DC HOLD");
+    checkSpeechStr(lastSpeechData->mode, vc830Data->mode, "DC");
+    checkSpeechStr(lastSpeechData->mode, vc830Data->mode, "AC REL");
+    checkSpeechStr(lastSpeechData->mode, vc830Data->mode, "AC HOLD");
+    checkSpeechStr(lastSpeechData->mode, vc830Data->mode, "AC");
+
+    if (!strequal(lastSpeechData->formatedValue, vc830Data->formatedValue)) {
+
+        char   buf[BUFFER_LEN];
+        double vSpeach = atof(vc830Data->value) * (vc830Data->sign == '-' ? -1 : 1);
+
+        // Patch for german outout... (the ugly way..., but my locale is normally "en"...)
+        if (strchr(vc830Data->value, '.')) {
+
+            // We limit the the spoken output to one digit after komma
+            snprintf(buf, sizeof(buf), "%1.1f", vSpeach);
+
+            char *k = strchr(buf, '.');
+            if (k) {
+                *k = ',';
+            }
+        }
+        else {
+            snprintf(buf, sizeof(buf), "%1.0f", vSpeach);
+        }
+
+        fprintf(stdout, "%s %s %s\n", buf, textToSpeech(vc830Data->prefix), textToSpeech(vc830Data->unit));
+        //fprintf(stdout, "%s %s %s %s\n", vc830Data->value, buf, textToSpeech(vc830Data->prefix), textToSpeech(vc830Data->unit));
+        strncpy(lastSpeechData->formatedValue, vc830Data->formatedValue, BUFFER_LEN);
+    }
+    //fprintf(stdout, "----------------------\n");
+    //showDataKeyValue(vc830Data, timeText);
+    //fprintf(stdout, "----------------------\n");
+}
+
+// --------------------------------------------------------------------------------------------------------------
+
+int showData(struct Vc830 *vc830Data, const char *outputFormat,
+             const char *timeFormat)
+{
+    char *timeText = NULL;
+
     // iso, local, epochsecms, human, none
     if (strequal(timeFormat, "iso")) {
         timeText = getIso8601Time(vc830Data->receivedAt);
@@ -626,25 +738,30 @@ void showData(struct Vc830* vc830Data, const char* outputFormat, const char* tim
     // keyvalue, json, human, si
     if (strequal(outputFormat, "keyvalue")) {
         showDataKeyValue(vc830Data, timeText);
-        return;
+        return 0;
     }
     if (strequal(outputFormat, "json")) {
         showDataJson(vc830Data, timeText);
-        return;
+        return 0;
     }
     if (strequal(outputFormat, "human")) {
         showDataHuman(vc830Data, timeText);
-        return;
+        return 0;
     }
     if (strequal(outputFormat, "si")) {
         showDataSi(vc830Data, timeText);
-        return;
+        return 0;
     }
+    if (strequal(outputFormat, "speech")) {
+        showDataSpeech(vc830Data, timeText);
+        return 0;
+    }
+    return -1;
 }
 
 // --------------------------------------------------------------------------------------------------------------
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     int ret;
 
@@ -707,11 +824,12 @@ int main(int argc, char** argv)
 
         ret = decodeFS9922Paket(readBuffer, &vc830Data);
         if (ret != 0) {
-            fprintf(stderr, "VC-830 data paket parsing failed with %d\n", ret);
             continue;
         }
 
-        showData(&vc830Data, outputFormat, timeFormat);
+        ret = showData(&vc830Data, outputFormat, timeFormat);
+        fflush(stdout);
+        if (ret != 0) showUsageAndExit("Unknown output format");
     }  // while
 
     close(fd);

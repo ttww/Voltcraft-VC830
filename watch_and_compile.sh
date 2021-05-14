@@ -4,8 +4,8 @@
 #
 
 # Device with RS232 connection to VC830
-dev=/dev/ttyUSB1
 dev=test.dat
+dev=/dev/ttyUSB0
 
 ARCH=`uname -m`
 EXE=vc830.$ARCH
@@ -23,14 +23,15 @@ do
 		ls -l $EXE
 
 		if [ -e $dev ] ; then
-			./$EXE -c 1 -f keyvalue $dev
-			./$EXE -c 1 -f json $dev
-			./$EXE -c 1 -f human $dev
-			./$EXE -c 1 -f si $dev
-			./$EXE -c 1 -f human -t iso $dev
-			./$EXE -c 1 -f human -t local $dev
-			./$EXE -c 1 -f human -t epochsecms $dev
-			./$EXE -c 1 -f human -t human $dev
+			./$EXE -c 10 -f speech $dev
+			#./$EXE -c 1 -f keyvalue $dev
+			#./$EXE -c 1 -f json $dev
+			#./$EXE -c 1 -f human $dev
+			#./$EXE -c 1 -f si $dev
+			#./$EXE -c 1 -f human -t iso $dev
+			#./$EXE -c 1 -f human -t local $dev
+			#./$EXE -c 1 -f human -t epochsecms $dev
+			#./$EXE -c 1 -f human -t human $dev
 		fi
 	fi
 	echo "done."
