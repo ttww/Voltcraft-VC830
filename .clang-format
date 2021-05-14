@@ -1,0 +1,15 @@
+{
+	BasedOnStyle: Google,
+	IndentWidth: 4,
+	ColumnLimit: 0,
+	AlignConsecutiveAssignments: true,
+	AlignConsecutiveMacros: true,
+	AlignConsecutiveDeclarations: true,
+	AlignOperands: true,
+	AllowShortBlocksOnASingleLine: true,
+	AllowShortIfStatementsOnASingleLine: true,
+	AllowShortLoopsOnASingleLine: true,
+	KeepEmptyLinesAtTheStartOfBlocks: true,
+	BreakBeforeBraces: Stroustrup,
+}
+

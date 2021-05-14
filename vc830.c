@@ -25,7 +25,7 @@
 
 // --------------------------------------------------------------------------------------------------------------
 
-#define VERSION "1.0.0"
+#define VERSION "1.1.0"
 
 #define BUFFER_LEN          100     // Used for all kind of static allocations...
 #define END_OF_CAPTURE_FILE 142857  // EOF of test file reached
@@ -53,6 +53,7 @@ struct Vc830 {
     char           value[BUFFER_LEN];            // Formated value
     char           formatedValue[BUFFER_LEN];    // Formated value with measurement unit
     char           formatedSiValue[BUFFER_LEN];  // Formated value, normed to SI base unit
+    char           lastSpeechOutput[BUFFER_LEN]; // Last output from speech. Used to avoid repetitions.    
 };
 
 // --------------------------------------------------------------------------------------------------------------
@@ -72,9 +73,9 @@ void showUsageAndExit(const char *message)
     fprintf(stderr, "vc830: Reads serial data from a RS232 device for Voltcraft VC830 DMM. (c) 2021 version %s, Thomas Welsch (ttww@gmx.de)\n", VERSION);
 
     fprintf(stderr, "Usage: vc830 [-f output-format] [-t time-format] [-c count] <tty device where the VC830 is connected>.\n");
-    fprintf(stderr, "              -f   output-format  keyvalue, json, human, si.           Default = human\n");
-    fprintf(stderr, "              -t   time-format    iso, local, epochsecms, human, none  Default = none\n");
-    fprintf(stderr, "              -c   count          number of samples                    Default = endless\n");
+    fprintf(stderr, "              -f   output-format  keyvalue, json, human, si, speech       Default = human\n");
+    fprintf(stderr, "              -t   time-format    iso, local, epochsecms, human, none     Default = none\n");
+    fprintf(stderr, "              -c   count          number of samples                       Default = endless\n");
 
     exit(-1);
 }
@@ -663,12 +664,14 @@ bool checkSpeechBool(bool oldBool, bool newBool, const char *flag)
 
 // --------------------------------------------------------------------------------------------------------------
 
-void showDataSpeech(struct Vc830 *vc830Data, const char *timeText)
+int showDataSpeech(struct Vc830 *vc830Data, const char *timeText)
 {
+    int ret = 0;
+
     initLastSpeechData();
 
     lastSpeechData->overflow = checkSpeechBool(lastSpeechData->overflow, vc830Data->overflow, "OVF");
-    if (lastSpeechData->overflow) return;
+    if (lastSpeechData->overflow) return ret;
 
     lastSpeechData->batteryWarning = checkSpeechBool(lastSpeechData->batteryWarning, vc830Data->batteryWarning, "BAT");
 
@@ -700,17 +703,29 @@ void showDataSpeech(struct Vc830 *vc830Data, const char *timeText)
             snprintf(buf, sizeof(buf), "%1.0f", vSpeach);
         }
 
-        fprintf(stdout, "%s %s %s\n", buf, textToSpeech(vc830Data->prefix), textToSpeech(vc830Data->unit));
-        //fprintf(stdout, "%s %s %s %s\n", vc830Data->value, buf, textToSpeech(vc830Data->prefix), textToSpeech(vc830Data->unit));
+        if (!strequal(lastSpeechData->lastSpeechOutput, buf)) {
+            fprintf(stdout, "%s %s %s\n", buf, textToSpeech(vc830Data->prefix), textToSpeech(vc830Data->unit));
+            strncpy(lastSpeechData->lastSpeechOutput, buf, BUFFER_LEN);
+            ret = 1;    // Data output done
+            //fprintf(stdout, "%s %s %s %s\n", vc830Data->value, buf, textToSpeech(vc830Data->prefix), textToSpeech(vc830Data->unit));
+        }
         strncpy(lastSpeechData->formatedValue, vc830Data->formatedValue, BUFFER_LEN);
     }
     //fprintf(stdout, "----------------------\n");
     //showDataKeyValue(vc830Data, timeText);
     //fprintf(stdout, "----------------------\n");
+
+    return ret;
 }
 
 // --------------------------------------------------------------------------------------------------------------
 
+//
+// Outputs data for the given format.
+// Return:  1 = Data printed
+//          0 = Data not printed
+//         -1 = Unknown output data format
+//
 int showData(struct Vc830 *vc830Data, const char *outputFormat,
              const char *timeFormat)
 {
@@ -738,23 +753,22 @@ int showData(struct Vc830 *vc830Data, const char *outputFormat,
     // keyvalue, json, human, si
     if (strequal(outputFormat, "keyvalue")) {
         showDataKeyValue(vc830Data, timeText);
-        return 0;
+        return 1;
     }
     if (strequal(outputFormat, "json")) {
         showDataJson(vc830Data, timeText);
-        return 0;
+        return 1;
     }
     if (strequal(outputFormat, "human")) {
         showDataHuman(vc830Data, timeText);
-        return 0;
+        return 1;
     }
     if (strequal(outputFormat, "si")) {
         showDataSi(vc830Data, timeText);
-        return 0;
+        return 1;
     }
     if (strequal(outputFormat, "speech")) {
-        showDataSpeech(vc830Data, timeText);
-        return 0;
+        return showDataSpeech(vc830Data, timeText);
     }
     return -1;
 }
@@ -813,10 +827,9 @@ int main(int argc, char **argv)
     //
     byte         readBuffer[BUFFER_LEN];
     struct Vc830 vc830Data;
-    long         loop = 0;
+    long         outputCounter = 0;
 
-    while (loop < count) {
-        loop++;
+    while (outputCounter < count) {
 
         ret = read14BytesPaket(fd, readBuffer);
         if (ret == END_OF_CAPTURE_FILE) break;  // --> terminate
@@ -828,8 +841,13 @@ int main(int argc, char **argv)
         }
 
         ret = showData(&vc830Data, outputFormat, timeFormat);
-        fflush(stdout);
-        if (ret != 0) showUsageAndExit("Unknown output format");
+        if (ret == 1) {
+            fflush(stdout);
+            outputCounter++;
+        }
+
+        if (ret == -1) showUsageAndExit("Unknown output format");
+
     }  // while
 
     close(fd);

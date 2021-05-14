@@ -1,6 +1,6 @@
 # Voltcraft-VC830
 
-vc840 is a little C program which reads serial data from a voltcraft VC830 digital multimeter and transform it to different output signals.
+vc830 is a little C program which reads serial data from a voltcraft VC830 digital multimeter and transform it to different output signals.
 
 <img src="doc/voltcraft-vc830.png" alt="VC830" width="200px"/>
 
@@ -28,9 +28,9 @@ The program supports the following parameters:
 
 ```
 Usage: vc830 [-f output-format] [-t time-format] [-c count] <tty device>.
-              -f   output-format  keyvalue, json, human, si.           Default = human
-              -t   time-format    iso, local, epochsecms, human, none  Default = none
-              -c   count          number of samples                    Default = endless
+              -f   output-format  keyvalue, json, human, si, speech     Default = human
+              -t   time-format    iso, local, epochsecms, human, none   Default = none
+              -c   count          number of samples                     Default = endless
 ```
 
 ### Running
@@ -110,6 +110,24 @@ Same as "Human", but the value is normalized to SI base units. E.g. if the VC830
 
 ```
 0.050 V		DC	AUTO
+```
+
+##### "Speech" output:
+This output format is specifically for feeding a voice synthesizer. It generates an output only in case of changes. The number of decimal places is limited to one. 
+Currently only German is supported, but this can be easily changed (see <code>textToSpeechData[]</code>array).
+
+```
+Batterie Warnung
+Automatische Bereichswahl
+Gleichspannung
+3,3  Volt
+2,5  Volt
+1,6  Volt
+2,6  Volt
+3,3  Volt
+1,5  Volt
+1,2  Volt
+...
 ```
 
 #### Time formats:
